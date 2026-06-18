@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoundscapeAnalytics</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="titlebar">
+        <div class="titlebar-left">
+          <img
+            id="app-icon"
+            src="/app-logo.svg"
+            alt="SoundscapeAnalytics"
+            class="app-icon"
+            onerror="this.onerror=null;this.src='/app-logo.png';"
+          />
+          <div class="toolbar-input">
+            <button id="pick-files" type="button">Select WAV files</button>
+            <button id="pick-folder" type="button" class="secondary">Select folder</button>
+            <button id="clear-files" type="button" class="ghost">Clear</button>
+            <span id="file-summary" class="file-summary">No files selected</span>
+          </div>
+        </div>
+        <div class="titlebar-right">
+          <div class="app-settings" aria-label="App settings">
+            <label class="settings-control">
+              <span data-i18n="settings.language">Language</span>
+              <select id="app-language" aria-label="Language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="pt">Portuguese</option>
+                <option value="de">German</option>
+              </select>
+            </label>
+            <label class="settings-control">
+              <span data-i18n="settings.fontSize">Text size</span>
+              <select id="app-font-size" aria-label="Text size">
+                <option value="normal">Normal</option>
+                <option value="large">Large</option>
+                <option value="xlarge">Extra large</option>
+              </select>
+            </label>
+          </div>
+          <div class="partner-logos">
+            <img
+              id="museo-logo"
+              src="/museo-logo.png"
+              alt="Museo Bioacústico"
+              class="partner-logo museo-logo"
+              data-i18n-title="toolbar.museoLogo"
+              title="Museo Bioacústico"
+              onerror="this.style.display='none'"
+            />
+            <img
+              id="lab-logo"
+              src="/lab-logo.png"
+              alt="Lab logo"
+              class="partner-logo lab-logo"
+              data-i18n-title="toolbar.labLogo"
+              title="Lab logo"
+              onerror="this.style.display='none'"
+            />
+          </div>
+          <button id="close-app" type="button" class="close-btn">Close</button>
+        </div>
+      </header>
+
+      <nav class="main-tabs" role="tablist">
+        <button type="button" class="main-tab active" data-tab="analyze" role="tab">Index Calculation</button>
+        <button type="button" class="main-tab" data-tab="birdnet-analyzer" role="tab">BirdNET Analyzer</button>
+        <button type="button" class="main-tab" data-tab="falsecolor" role="tab">False-Color Spectrograms</button>
+        <button type="button" class="main-tab" data-tab="birdnet" role="tab">BirdNet Visualizer</button>
+        <button type="button" class="main-tab" data-tab="plots" role="tab">Index Visualizer</button>
+        <button type="button" class="main-tab" data-tab="sandbox" role="tab">Index Sandbox</button>
+        <button type="button" class="main-tab" data-tab="guide" role="tab">Index Reference</button>
+      </nav>
+
+      <div id="tab-analyze" class="tab-panel active" role="tabpanel">
+        <main class="layout">
+          <section class="panel sidebar">
+            <div class="indices-panel">
+              <h2 data-i18n="analyze.indices">Indices</h2>
+              <div id="index-checkboxes" class="index-grid index-grid-wide"></div>
+            </div>
+
+            <h2 data-i18n="analyze.parameters">Parameters</h2>
+            <div class="params-grid">
+              <label>Freq. resolution (Hz) <input id="freq-res" type="number" step="1" min="1" /></label>
+              <label>Window
+                <select id="win-fun">
+                  <option value="hanning">Hanning</option>
+                  <option value="hamming">Hamming</option>
+                  <option value="blackman">Blackman</option>
+                  <option value="bartlett">Bartlett</option>
+                  <option value="flattop">Flat-top</option>
+                  <option value="rectangle">Rectangle</option>
+                </select>
+              </label>
+              <label>Cutoff (dBFS) <input id="cutoff" type="number" step="1" /></label>
+              <label>N bands <input id="n-bands" type="number" step="1" min="1" max="20" /></label>
+              <label>FFT window (BI/NDSI) <input id="w-len" type="number" step="1" min="64" /></label>
+              <label>Parallel threads <input id="num-threads" type="number" step="1" min="1" placeholder="auto" /></label>
+              <label>Stereo → mono
+                <select id="channel-mode">
+                  <option value="mix">Average (L+R)/2 (default)</option>
+                  <option value="each">Each channel (2 spectrograms)</option>
+                  <option value="left">Left channel only</option>
+                  <option value="right">Right channel only</option>
+                </select>
+              </label>
+              <label class="checkbox"><input id="rm-offset" type="checkbox" /> Remove DC offset</label>
+            </div>
+
+            <details class="param-details" open>
+              <summary data-i18n="analyze.divBandsSummary">ADI / AEI / FADI frequency bands (kHz)</summary>
+              <p class="spec-hint">Shared band edges for diversity indices. Band 1 low cut acts as a band-pass filter; other bands use upper edges only. Use <em>Reset to equal bands</em> to re-split the range.</p>
+              <div id="div-bands-grid" class="params-grid div-bands-grid"></div>
+              <div class="btn-row">
+                <button id="div-bands-equalize" type="button" class="secondary">Reset to equal bands</button>
+              </div>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.aciRangeSummary">ACI frequency range (kHz)</summary>
+              <div class="params-grid">
+                <label>Min freq (kHz) <input id="aci-min-freq" type="number" step="0.1" min="0" /></label>
+                <label>Max freq (kHz) <input id="aci-max-freq" type="number" step="0.1" placeholder="Nyquist" /></label>
+              </div>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.biRangeSummary">BI frequency range (kHz)</summary>
+              <div class="params-grid">
+                <label>Min freq (kHz) <input id="bi-min-freq" type="number" step="0.1" min="0" /></label>
+                <label>Max freq (kHz) <input id="bi-max-freq" type="number" step="0.1" min="0" /></label>
+              </div>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.ndsiBandsSummary">NDSI frequency bands</summary>
+              <div class="params-grid">
+                <label>Anthro min (kHz) <input id="anthro-min" type="number" step="0.1" /></label>
+                <label>Anthro max (kHz) <input id="anthro-max" type="number" step="0.1" /></label>
+                <label>Bio min (kHz) <input id="bio-min" type="number" step="0.1" /></label>
+                <label>Bio max (kHz) <input id="bio-max" type="number" step="0.1" /></label>
+              </div>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.bbaiSummary">BBAI</summary>
+              <div class="params-grid">
+                <label>HPF (kHz) <input id="hpf" type="number" step="0.05" min="0" /></label>
+                <label>Click length (bins) <input id="click-length" type="number" step="1" min="1" /></label>
+                <label>Click diff (dB) <input id="difference" type="number" step="1" /></label>
+                <label>Gap allowance <input id="gap-allowance" type="number" step="1" min="0" /></label>
+              </div>
+            </details>
+
+            <!-- NBAI / TAI — dormant in UI; re-enable via indicesConfig.ts -->
+            <details class="param-details" id="params-nbai-tai-dormant" hidden>
+              <summary>NBAI / TAI</summary>
+              <div class="params-grid">
+                <label>Activity cutoff (%) <input id="activity-cutoff" type="number" step="1" /></label>
+                <label>TAI time windows <input id="n-windows" type="number" step="1" min="1" /></label>
+              </div>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.fadiSummary">FADI thresholding</summary>
+              <div class="params-grid">
+                <label>NEM (2=histogram) <input id="nem" type="number" step="1" min="1" max="2" /></label>
+                <label>Global threshold (dB) <input id="threshold-fixed" type="number" step="1" /></label>
+                <label>Gamma (dB) <input id="gamma" type="number" step="1" /></label>
+              </div>
+              <p class="spec-hint">Frequency bands are shared with ADI/AEI above.</p>
+            </details>
+
+            <details class="param-details">
+              <summary data-i18n="analyze.fciSummary">FCI frequency bands (kHz)</summary>
+              <p class="spec-hint">LF low cut plus upper edge for each cover band (LFC/MFC/HFC/UFC). Lower edges of MFC/HFC/UFC follow the previous band’s upper edge.</p>
+              <div id="fci-bands-grid" class="params-grid fci-bands-grid"></div>
+            </details>
+
+            <div class="btn-row actions">
+              <button id="compute" type="button" class="primary">Compute indices</button>
+              <button id="export-csv" type="button" class="secondary" disabled>Export CSV</button>
+            </div>
+            <p id="status" class="status"></p>
+          </section>
+
+          <section class="panel results">
+            <h2 data-i18n="analyze.results">Results</h2>
+            <div class="table-wrap">
+              <table id="results-table">
+                <thead>
+                  <tr>
+                    <th>File</th>
+                    <th>Index</th>
+                    <th>Value</th>
+                    <th>L</th>
+                    <th>R</th>
+                    <th>Avg</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <div id="tab-plots" class="tab-panel" role="tabpanel">
+        <section class="panel plots-panel">
+          <div class="plot-controls">
+            <label>Chart type
+              <select id="plot-type">
+                <option value="box">Box &amp; whisker (by site)</option>
+                <option value="violin">Violin (by site)</option>
+                <option value="bar">Bar summary (by group)</option>
+                <option value="scatter">Scatter over time (by site)</option>
+                <option value="timeseries">Time series (raw)</option>
+                <option value="timeseries_agg">Time series (aggregated)</option>
+              </select>
+            </label>
+            <div class="plot-indices-field">
+              <span class="plot-field-label">Indices</span>
+              <div id="plot-index-checkboxes" class="plot-index-grid"></div>
+            </div>
+            <label>Value column
+              <select id="plot-value">
+                <option value="value">Value</option>
+                <option value="valueAvg">Average</option>
+                <option value="valueL">Left</option>
+                <option value="valueR">Right</option>
+              </select>
+            </label>
+            <div id="plot-group-row">
+              <label>Group by
+                <select id="plot-group">
+                  <option value="sensorId">Site / sensor</option>
+                  <option value="hour">Hour of day</option>
+                  <option value="dateKey">Date</option>
+                  <option value="weekKey">Week</option>
+                  <option value="monthKey">Month</option>
+                </select>
+              </label>
+            </div>
+            <div id="plot-agg-row" hidden>
+              <label>Time bucket
+                <select id="plot-time-group">
+                  <option value="dateKey">Day</option>
+                  <option value="weekKey">Week</option>
+                  <option value="monthKey">Month</option>
+                  <option value="hour">Hour of day</option>
+                </select>
+              </label>
+              <label>Aggregation
+                <select id="plot-agg">
+                  <option value="mean">Mean</option>
+                  <option value="median">Median</option>
+                  <option value="sd">Std. dev.</option>
+                </select>
+              </label>
+            </div>
+            <button id="plot-btn" type="button" class="primary">Update plot</button>
+          </div>
+          <div id="plot-area" class="plot-area">
+            <p class="plot-empty">Run index calculation first, then choose chart options here.</p>
+          </div>
+        </section>
+      </div>
+
+      <div id="tab-sandbox" class="tab-panel" role="tabpanel">
+        <section class="panel spec-panel">
+          <p class="sandbox-lead">Tune index parameters in the left panel — controls respond immediately; the spectrogram updates after a 2&nbsp;s pause. Display toggles and view range refresh within ~0.1&nbsp;s. Use <strong>Load &amp; visualize</strong> after changing FFT size, or wait for the auto-reload when switching channel mode.</p>
+          <div class="spec-toolbar">
+            <label class="spec-viz-index-label">Visualize index
+              <select id="spec-viz-index" class="spec-view-ctrl">
+                <option value="">— None —</option>
+                <option value="adi-aei" selected>ADI / AEI</option>
+                <option value="fadi">FADI</option>
+                <option value="fci">FCI</option>
+                <option value="bbai">BBAI</option>
+              </select>
+            </label>
+            <label>File <select id="spec-file"></select></label>
+            <label>FFT size
+              <input id="spec-fft" class="spec-view-ctrl spec-reload" type="number" step="64" min="64" max="4096" placeholder="2048 @ 48 kHz" title="Power of 2; defaults to 2048 at 48 kHz, 1024 at 24 kHz, etc." />
+            </label>
+            <label>Colormap
+              <select id="spec-cmap" class="spec-view-ctrl">
+                <option value="viridis">Viridis</option>
+                <option value="inferno">Inferno</option>
+              </select>
+            </label>
+            <button id="spec-load" type="button" class="primary">Load &amp; visualize</button>
+            <button id="sb-sync-analyze" type="button" class="secondary" title="Copy parameters from Index Calculation">Sync from Index Calculation</button>
+            <audio id="spec-audio" controls class="spec-audio"></audio>
+            <span id="spec-status" class="spec-status"></span>
+          </div>
+          <div class="spec-body">
+            <aside class="spec-params-panel">
+              <h2>View range</h2>
+              <p class="spec-hint">Display zoom only.</p>
+              <div class="spec-view-range-section params-grid params-grid-sandbox params-grid-compact">
+                <label>View min (kHz) <input id="sb-view-min-freq" class="spec-param spec-view-ctrl" type="number" step="0.1" min="0" value="0" /></label>
+                <label>View max (kHz) <input id="sb-view-max-freq" class="spec-param spec-view-ctrl" type="number" step="0.1" min="0.1" placeholder="Nyquist" /></label>
+              </div>
+
+              <h2>Common</h2>
+              <div class="params-grid params-grid-sandbox">
+                <label>Stereo → mono
+                  <select id="sb-channel-mode" class="spec-param spec-reload">
+                    <option value="mix">Average (L+R)/2 (default)</option>
+                    <option value="each">Each channel (2 spectrograms)</option>
+                    <option value="left">Left channel only</option>
+                    <option value="right">Right channel only</option>
+                  </select>
+                </label>
+                <label class="checkbox"><input id="sb-rm-offset" class="spec-param" type="checkbox" /> Remove DC offset</label>
+              </div>
+
+              <div id="sb-params-bands" class="sb-index-params" data-sb-index="adi-aei fadi">
+                <details class="param-details" open>
+                  <summary>Frequency bands (kHz)</summary>
+                  <p class="spec-hint">Shared by ADI, AEI, and FADI. Band 1 low cut acts as band-pass; other bands use upper edges only.</p>
+                  <div id="sb-div-bands-grid" class="params-grid params-grid-sandbox div-bands-grid"></div>
+                  <div class="btn-row">
+                    <button id="sb-div-bands-equalize" type="button" class="secondary spec-param">Reset to equal bands</button>
+                  </div>
+                </details>
+              </div>
+
+              <div id="sb-params-flat-cutoff" class="sb-index-params" data-sb-index="adi-aei fci bbai">
+                <div class="params-grid params-grid-sandbox">
+                  <label>Cutoff (dBFS) <input id="sb-cutoff" class="spec-param" type="number" step="1" /></label>
+                </div>
+              </div>
+
+              <div id="sb-params-adi-aei" class="sb-index-params" data-sb-index="adi-aei">
+                <h2>ADI / AEI parameters</h2>
+                <p id="sb-proportions-desc" class="spec-hint"></p>
+                <div class="params-grid params-grid-sandbox">
+                  <label>Band proportion mode
+                    <select id="sb-prop-den" class="spec-param spec-view-ctrl">
+                      <option value="2">Across the range (active in band ÷ all active cells)</option>
+                      <option value="1">Within each band (active ÷ all cells in band)</option>
+                    </select>
+                  </label>
+                  <label>Freq. resolution (Hz) <input id="sb-freq-res" class="spec-param" type="number" step="1" min="1" /></label>
+                  <label>Window
+                    <select id="sb-win-fun" class="spec-param">
+                      <option value="hanning">Hanning</option>
+                      <option value="hamming">Hamming</option>
+                      <option value="blackman">Blackman</option>
+                      <option value="bartlett">Bartlett</option>
+                      <option value="flattop">Flat-top</option>
+                      <option value="rectangle">Rectangle</option>
+                    </select>
+                  </label>
+                  <label>N bands <input id="sb-n-bands" class="spec-param" type="number" step="1" min="1" max="20" /></label>
+                </div>
+              </div>
+
+              <div id="sb-params-fadi" class="sb-index-params" data-sb-index="fadi" hidden>
+                <h2>FADI parameters</h2>
+                <p class="spec-hint">FADI applies histogram noise estimation and a per-frequency floating threshold (γ + global offset). Cutoff/binary overlays use that threshold instead of the flat cutoff above.</p>
+                <details class="param-details" open>
+                  <summary data-i18n="analyze.fadiSummary">FADI thresholding</summary>
+                  <div class="params-grid params-grid-sandbox">
+                    <label>NEM (2=histogram) <input id="sb-nem" class="spec-param" type="number" step="1" min="1" max="2" /></label>
+                    <label>Global threshold (dB) <input id="sb-threshold-fixed" class="spec-param" type="number" step="1" /></label>
+                    <label>Gamma (dB) <input id="sb-gamma" class="spec-param" type="number" step="1" /></label>
+                  </div>
+                </details>
+              </div>
+
+              <div id="sb-params-fci" class="sb-index-params" data-sb-index="fci" hidden>
+                <h2>FCI parameters</h2>
+                <details class="param-details" open>
+                  <summary data-i18n="analyze.fciSummary">FCI frequency bands (kHz)</summary>
+                  <p class="spec-hint">LF low cut plus upper edge per band; MFC/HFC/UFC lower edges are implicit.</p>
+                  <div id="sb-fci-bands-grid" class="params-grid params-grid-sandbox fci-bands-grid"></div>
+                </details>
+              </div>
+
+              <div id="sb-params-bbai" class="sb-index-params" data-sb-index="bbai" hidden>
+                <h2>BBAI parameters</h2>
+                <div class="params-grid params-grid-sandbox">
+                  <label>Click length (bins) <input id="sb-click-length" class="spec-param" type="number" step="1" min="1" /></label>
+                  <label>Click diff (dB) <input id="sb-difference" class="spec-param" type="number" step="1" /></label>
+                  <label>Gap allowance <input id="sb-gap-allowance" class="spec-param" type="number" step="1" min="0" /></label>
+                </div>
+              </div>
+            </aside>
+            <aside class="spec-sidebar">
+              <h2>Display</h2>
+              <p class="spec-hint spec-viz-hint">One view at a time:</p>
+              <label class="spec-overlay-label"><input id="spec-show-regular" class="spec-viz-mode spec-view-ctrl" type="checkbox" checked /> Regular spectrogram</label>
+              <label class="spec-overlay-label"><input id="spec-show-cutoff" class="spec-viz-mode spec-view-ctrl" type="checkbox" /> Cutoff mask (inactive cells black)</label>
+              <label class="spec-overlay-label"><input id="spec-show-binary" class="spec-viz-mode spec-view-ctrl" type="checkbox" /> Binary (active cells only)</label>
+              <p id="spec-mask-hint" class="spec-hint">For ADI/AEI/FCI/BBAI: flat cutoff. For FADI: per-bin floating threshold.</p>
+              <div id="spec-stats" class="spec-stats"></div>
+              <div id="spec-props-bars" class="spec-props-bars"></div>
+            </aside>
+            <div class="spec-viz-column">
+              <div class="spec-plot-wrap" id="spec-plot-wrap">
+                <div id="spec-plot-single" class="spec-plots spec-plots-single">
+                  <canvas id="spec-canvas" class="spec-canvas"></canvas>
+                </div>
+                <div id="spec-plot-dual" class="spec-plots spec-plots-dual" hidden>
+                  <div class="spec-plot-pane">
+                    <span class="spec-chan-label">Left</span>
+                    <canvas id="spec-canvas-l" class="spec-canvas"></canvas>
+                  </div>
+                  <div class="spec-plot-pane">
+                    <span class="spec-chan-label">Right</span>
+                    <canvas id="spec-canvas-r" class="spec-canvas"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div id="spec-index-calcs" class="spec-index-calcs" hidden>
+                <div id="spec-adi-calc" class="spec-calc-pane"></div>
+                <div id="spec-aei-calc" class="spec-calc-pane"></div>
+                <div id="spec-fadi-calc" class="spec-calc-pane spec-calc-pane-full" hidden></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="tab-birdnet-analyzer" class="tab-panel" role="tabpanel">
+        <main class="layout bna-layout">
+          <section class="panel sidebar bna-sidebar">
+            <h2>BirdNET Analyzer</h2>
+            <p class="bna-lead">Run <a href="https://github.com/BirdNET-Team/BirdNET-Analyzer" target="_blank" rel="noopener">BirdNET-Analyzer</a> on WAV files locally. If the CLI is missing, use <strong>Install BirdNET Analyzer</strong> (requires Python 3.11+, pip, and internet).</p>
+            <p id="bna-detect" class="bna-detect">Checking installation…</p>
+            <div id="bna-install-row" class="bna-install-row" hidden>
+              <p id="bna-install-target" class="spec-hint"></p>
+              <div class="btn-row">
+                <button id="bna-install" type="button" class="primary">Install BirdNET Analyzer</button>
+                <button id="bna-pick-python" type="button" class="secondary">Choose Python…</button>
+              </div>
+              <p class="spec-hint">Downloads the CLI package via pip (TensorFlow + models; several GB, may take 10–30 min). Requires internet. Separate from the BirdNET GUI app.</p>
+            </div>
+            <div class="btn-row">
+              <button id="bna-pick-input" type="button">Input folder</button>
+              <button id="bna-pick-output" type="button" class="secondary">Output folder</button>
+              <button id="bna-use-toolbar" type="button" class="ghost" title="Use WAV folder from toolbar">Use toolbar folder</button>
+            </div>
+            <p id="bna-paths" class="file-summary">No folders selected</p>
+            <details class="param-details" open>
+              <summary>Detection settings</summary>
+              <div class="params-grid bna-params">
+                <label>Min. confidence <input id="bna-min-conf" type="number" min="0.01" max="0.99" step="0.05" value="0.25" /></label>
+                <label>Overlap <input id="bna-overlap" type="number" min="0" max="4.9" step="0.1" value="1" /></label>
+                <label>Sensitivity <input id="bna-sensitivity" type="number" min="0.5" max="1.5" step="0.1" value="1" /></label>
+                <label>Batch size <input id="bna-batch-size" type="number" min="1" step="1" value="1" /></label>
+                <label>CPU threads <input id="bna-workers" type="number" min="1" step="1" placeholder="auto" /></label>
+                <label class="bna-check"><input id="bna-split-tables" type="checkbox" /> Separate CSV per file</label>
+              </div>
+            </details>
+            <details class="param-details" id="bna-location-details" open>
+              <summary>Location filter (optional)</summary>
+              <p class="spec-hint">Search for a place or click the map to set coordinates. BirdNET uses lat/lon to filter the species list for your recording site.</p>
+              <div class="bna-map-search">
+                <input id="bna-place-search" type="search" placeholder="Search place (city, park, coordinates…)" autocomplete="off" />
+                <button id="bna-place-search-btn" type="button" class="secondary">Search</button>
+                <button id="bna-clear-location" type="button" class="ghost">Clear</button>
+              </div>
+              <ul id="bna-place-results" class="bna-place-results" hidden></ul>
+              <p id="bna-map-status" class="bna-map-status"></p>
+              <div id="bna-map" class="bna-map" role="application" aria-label="Recording location map"></div>
+              <p id="bna-location-label" class="bna-location-label"></p>
+              <div class="params-grid bna-params">
+                <label>Latitude <input id="bna-lat" type="number" step="0.0001" placeholder="e.g. 23.78" /></label>
+                <label>Longitude <input id="bna-lon" type="number" step="0.0001" placeholder="e.g. 90.41" /></label>
+                <label>Week (1–48) <input id="bna-week" type="number" min="1" max="48" step="1" placeholder="optional" /></label>
+                <label>Locale
+                  <select id="bna-locale">
+                    <option value="en" selected>English (US)</option>
+                    <option value="en_UK">English (UK)</option>
+                    <option value="de">German</option>
+                    <option value="fr">French</option>
+                    <option value="es">Spanish</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+            <details class="param-details">
+              <summary>How to cite BirdNET</summary>
+              <div class="bna-cite">
+                <p>If you use BirdNET Analyzer in your research, please cite:</p>
+                <p class="bna-cite-text">
+                  Kahl, S., Wood, C. M., Eibl, M., &amp; Klinck, H. (2021).
+                  BirdNET: A deep learning solution for avian diversity monitoring.
+                  <em>Ecological Informatics</em>, 61, 101236.
+                  <a href="https://doi.org/10.1016/j.ecoinf.2021.101236" target="_blank" rel="noopener">doi:10.1016/j.ecoinf.2021.101236</a>
+                </p>
+                <pre class="bna-bibtex" id="bna-bibtex">@article{kahl2021birdnet,
+  title={BirdNET: A deep learning solution for avian diversity monitoring},
+  author={Kahl, Stefan and Wood, Connor M and Eibl, Maximilian and Klinck, Holger},
+  journal={Ecological Informatics},
+  volume={61},
+  pages={101236},
+  year={2021},
+  publisher={Elsevier},
+  doi={10.1016/j.ecoinf.2021.101236}
+}</pre>
+                <button id="bna-copy-cite" type="button" class="secondary">Copy BibTeX</button>
+              </div>
+            </details>
+            <details class="param-details">
+              <summary>Bandpass &amp; Python</summary>
+              <div class="params-grid bna-params">
+                <label>Min freq (Hz) <input id="bna-fmin" type="number" min="0" max="15000" step="100" value="0" /></label>
+                <label>Max freq (Hz) <input id="bna-fmax" type="number" min="0" max="15000" step="100" value="15000" /></label>
+                <label>Python executable
+                  <input id="bna-python" type="text" placeholder="auto-detect (leave blank)" />
+                </label>
+              </div>
+              <div class="btn-row">
+                <button id="bna-clear-python" type="button" class="ghost">Clear Python path</button>
+                <button id="bna-refresh-detect" type="button" class="secondary">Refresh detection</button>
+              </div>
+              <p class="spec-hint">Leave Python blank to auto-detect <code>birdnet-analyze</code> on PATH. Only set this if BirdNET is installed in a specific environment (must have <code>pip install birdnet-analyzer</code>).</p>
+              <p id="bna-resolved-cmd" class="bna-resolved-cmd"></p>
+            </details>
+            <div class="btn-row actions">
+              <button id="bna-run" type="button" class="primary">Run analysis</button>
+              <button id="bna-cancel" type="button" class="secondary" disabled>Cancel</button>
+              <button id="bna-open-viz" type="button" class="ghost" disabled>Open in Visualizer</button>
+            </div>
+            <p id="bna-status" class="status"></p>
+          </section>
+          <section class="panel bna-log-panel">
+            <h2>Log</h2>
+            <pre id="bna-log" class="bna-log">Ready.</pre>
+          </section>
+        </main>
+      </div>
+
+      <div id="tab-falsecolor" class="tab-panel" role="tabpanel">
+        <main class="layout fcs-layout">
+          <section class="panel sidebar fcs-sidebar">
+            <h2>False-Color Spectrograms</h2>
+            <p class="fcs-lead">Generate long-duration false-color spectrograms (RGB = ACI-ENT-EVN) using <a href="https://ap.qut.ecoacoustics.info/" target="_blank" rel="noopener">AnalysisPrograms.exe</a>. Port of the R package <a href="https://github.com/panchorivasf/falsecoloR" target="_blank" rel="noopener">falsecoloR</a>.</p>
+            <p id="fcs-detect" class="fcs-detect">Checking installation…</p>
+            <div id="fcs-install-row" class="fcs-install-row" hidden>
+              <p class="spec-hint">Installs AP to <code>C:\AP</code> via the official QUT script. Requires PowerShell 7+, administrator approval, and internet. See <a href="https://ap.qut.ecoacoustics.info/basics/installing?tabs=windows" target="_blank" rel="noopener">installing AP on Windows</a>.</p>
+              <div class="btn-row">
+                <button id="fcs-install" type="button" class="primary">Install AnalysisPrograms.exe</button>
+                <button id="fcs-refresh-detect" type="button" class="secondary">Refresh detection</button>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button id="fcs-pick-input" type="button">Audio folder</button>
+              <button id="fcs-pick-output" type="button" class="secondary">Output folder</button>
+              <button id="fcs-use-toolbar" type="button" class="ghost" title="Use WAV folder from toolbar">Use toolbar folder</button>
+            </div>
+            <p id="fcs-paths" class="file-summary">No folders selected</p>
+            <details class="param-details" open>
+              <summary>Step 1 — AP compute (fcs_compute)</summary>
+              <div class="params-grid fcs-params">
+                <label class="fcs-check"><input id="fcs-hires" type="checkbox" /> High-resolution variant (add.hiRes) → <code>HiRes/</code></label>
+              </div>
+              <p class="spec-hint">Runs <code>audio2csv</code> per recording and copies raw 10-min <code>*_ACI-ENT-EVN.png</code> segment tiles to the output folder. Post-processing is a separate step below.</p>
+              <div class="btn-row">
+                <button id="fcs-run-compute" type="button" class="primary">Run AP compute</button>
+                <button id="fcs-cancel" type="button" class="secondary" disabled>Cancel</button>
+              </div>
+            </details>
+            <details class="param-details" open>
+              <summary>Step 2 — falsecoloR post-processing</summary>
+              <p class="spec-hint">Pick the folder with raw segment FCS tiles (usually the AP output folder from step 1).</p>
+              <div class="btn-row">
+                <button id="fcs-pick-segments" type="button">Segments folder</button>
+                <button id="fcs-use-output-segments" type="button" class="ghost" title="Use AP output folder">Use AP output</button>
+              </div>
+              <p id="fcs-segments-summary" class="file-summary">No segments folder selected</p>
+              <details class="param-details fcs-naming-details" open>
+                <summary>Filename date &amp; time</summary>
+                <p class="spec-hint">Each segment tile is placed on the daily plot at its start time; width reflects recording duration. Set how date/time are encoded in filenames when auto-detection fails.</p>
+                <p id="fcs-naming-example" class="file-summary fcs-naming-example">—</p>
+                <div class="fcs-token-row">
+                  <label>Delimiter <input id="fcs-naming-delimiter" type="text" value="_" size="3" /></label>
+                  <label>Date token #
+                    <select id="fcs-naming-date-idx"></select>
+                  </label>
+                  <label>Date format
+                    <select id="fcs-naming-date-fmt">
+                      <option value="%Y%m%d">YYYYMMDD</option>
+                      <option value="%Y-%m-%d">YYYY-MM-DD</option>
+                      <option value="%d%m%Y">DDMMYYYY</option>
+                    </select>
+                  </label>
+                  <label>Time token #
+                    <select id="fcs-naming-time-idx"></select>
+                  </label>
+                  <label>Time format
+                    <select id="fcs-naming-time-fmt">
+                      <option value="%H%M%S">HHMMSS</option>
+                      <option value="%H-%M-%S">HH-MM-SS</option>
+                      <option value="%H%M">HHMM</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="btn-row">
+                  <button id="fcs-naming-refresh" type="button" class="secondary">Refresh preview</button>
+                </div>
+                <ul id="fcs-naming-preview" class="fcs-naming-preview"></ul>
+              </details>
+              <div class="btn-row">
+                <button id="fcs-pick-audio" type="button">Audio folder (durations)</button>
+                <button id="fcs-use-input-audio" type="button" class="ghost" title="Use step 1 audio folder">Use AP input</button>
+              </div>
+              <p id="fcs-audio-summary" class="file-summary">Audio folder: not set (uses fcs_manifest.json when available)</p>
+              <div class="params-grid fcs-params">
+                <label class="fcs-check" title="Only for autonomous recorders on a fixed 10-minute schedule spanning full 24 h days">
+                  <input id="fcs-fill" type="checkbox" /> Legacy: fill 10-min grid (continuous recorders only)
+                </label>
+                <label class="fcs-check"><input id="fcs-organize" type="checkbox" /> Organize by date (fcs_organize)</label>
+                <label class="fcs-check"><input id="fcs-bind" type="checkbox" checked /> Bind segment tiles (fcs_bind) → <code>diel_ribbons/</code></label>
+                <label class="fcs-check"><input id="fcs-grid" type="checkbox" checked /> Annotated diel plot (fcs_grid) → <code>diel_fcs_plots/</code></label>
+                <label>Top crop (px) <input id="fcs-top-crop" type="number" min="0" value="41" /></label>
+                <label>Bottom crop (px) <input id="fcs-bottom-crop" type="number" min="0" value="18" /></label>
+              </div>
+              <p class="spec-hint"><code>fcs_bind</code> maps each recording onto a 24-hour canvas using parsed start time and WAV duration — gaps stay blank. <code>fcs_grid</code> adds axes and labels.</p>
+              <div class="btn-row">
+                <button id="fcs-run-postprocess" type="button" class="primary">Run post-processing</button>
+              </div>
+            </details>
+            <details class="param-details">
+              <summary>AnalysisPrograms path</summary>
+              <label>AP install folder
+                <input id="fcs-ap-root" type="text" placeholder="C:\AP" />
+              </label>
+              <p class="spec-hint">Default is <code>C:\AP</code> with <code>AnalysisPrograms.exe</code> and <code>ConfigFiles\</code> inside. Change only if you installed AP elsewhere.</p>
+            </details>
+            <details class="param-details">
+              <summary>How to cite</summary>
+              <div class="fcs-cite">
+                <p><strong>AnalysisPrograms.exe</strong> — cite in all publications using AP output:</p>
+                <p class="fcs-cite-text">
+                  Towsey, M., Truskinger, A., Cottman-Fields, M., &amp; Roe, P. (2018, March 5).
+                  Ecoacoustics Audio Analysis Software v18.03.0.41 (Version v18.03.0.41). Zenodo.
+                  <a href="https://doi.org/10.5281/zenodo.1188744" target="_blank" rel="noopener">doi:10.5281/zenodo.1188744</a>
+                </p>
+                <pre class="fcs-bibtex" id="fcs-bibtex-ap">@misc{towsey2018ecoacoustics,
+  author = {Towsey, Michael and Truskinger, Anthony and Cottman-Fields, Mark and Roe, Paul},
+  title = {Ecoacoustics Audio Analysis Software v18.03.0.41},
+  year = {2018},
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.1188744},
+  url = {https://doi.org/10.5281/zenodo.1188744}
+}</pre>
+                <p><strong>falsecoloR workflow</strong> — AP–R integration utility:</p>
+                <p class="fcs-cite-text">
+                  Brodie, S. (2021). sherynbrodie/fcs-audio-analysis-utility (Version 21.08.0) [Computer software]. Zenodo.
+                  <a href="https://doi.org/10.5281/zenodo.5220459" target="_blank" rel="noopener">doi:10.5281/zenodo.5220459</a>
+                </p>
+                <p class="spec-hint">Additional citations may appear in the AP log depending on indices used. Documentation: <a href="https://ap.qut.ecoacoustics.info/" target="_blank" rel="noopener">ap.qut.ecoacoustics.info</a></p>
+                <button id="fcs-copy-cite" type="button" class="secondary">Copy AP BibTeX</button>
+              </div>
+            </details>
+            <p id="fcs-composites-summary" class="file-summary" hidden></p>
+            <div class="btn-row actions">
+              <button id="fcs-open-plots" type="button" class="ghost" disabled>Open diel_fcs_plots</button>
+              <button id="fcs-open-ribbons" type="button" class="ghost" disabled>Open diel_ribbons</button>
+              <button id="fcs-open-output" type="button" class="ghost" disabled>Open output folder</button>
+            </div>
+          </section>
+          <section class="panel fcs-main-panel">
+            <p id="fcs-status" class="status fcs-status-bar" role="status" aria-live="polite"></p>
+            <h2>Daily composites</h2>
+            <p id="fcs-preview-empty" class="fcs-preview-empty">Run falsecoloR post-processing to preview daily plots here.</p>
+            <div id="fcs-preview" class="fcs-preview" hidden>
+              <div class="fcs-preview-nav">
+                <button id="fcs-preview-prev" type="button" class="fcs-carousel-arrow" aria-label="Previous day">‹</button>
+                <span id="fcs-preview-label" class="fcs-preview-label"></span>
+                <button id="fcs-preview-next" type="button" class="fcs-carousel-arrow" aria-label="Next day">›</button>
+              </div>
+              <div class="fcs-preview-frame">
+                <img id="fcs-preview-img" alt="Daily false-color spectrogram" />
+              </div>
+              <div id="fcs-preview-thumbs" class="fcs-preview-thumbs"></div>
+            </div>
+            <details class="param-details fcs-log-details">
+              <summary>Log</summary>
+              <pre id="fcs-log" class="fcs-log">Ready.</pre>
+            </details>
+          </section>
+        </main>
+      </div>
+
+      <div id="tab-birdnet" class="tab-panel" role="tabpanel">
+        <main class="layout bn-layout">
+          <section class="panel sidebar bn-sidebar">
+            <h2>BirdNET data</h2>
+            <p class="bn-lead">Load BirdNET Analyzer CSV exports (<code>*.BirdNET.results.csv</code>) or legacy GUI TXT/CSV files. Port of <a href="https://github.com/panchorivasf/BirdnetVisualizeR" target="_blank" rel="noopener">BirdnetVisualizeR</a>.</p>
+            <div class="btn-row">
+              <button id="bn-pick-files" type="button">Select CSV/TXT</button>
+              <button id="bn-pick-folder" type="button" class="secondary">Select folder</button>
+              <button id="bn-clear" type="button" class="ghost">Clear</button>
+            </div>
+            <label class="bn-check"><input id="bn-recursive" type="checkbox" checked /> Search subfolders</label>
+            <div class="params-grid bn-params">
+              <label>Format
+                <select id="bn-format">
+                  <option value="csv">CSV</option>
+                  <option value="txt">TXT (tab)</option>
+                </select>
+              </label>
+              <label>Min. confidence <input id="bn-conf" type="number" min="0" max="1" step="0.05" value="0.5" /></label>
+            </div>
+            <p id="bn-summary" class="file-summary">No data loaded</p>
+            <p id="bn-taxonomy-summary" class="bn-taxonomy-summary"></p>
+            <div class="btn-row">
+              <button id="bn-add-taxonomy" type="button" class="secondary" disabled title="Query GBIF backbone for order, family, genus">Add taxonomy (GBIF)</button>
+            </div>
+            <p id="bn-status" class="status"></p>
+
+            <h2>Visualization</h2>
+            <label>Viz type
+              <select id="bn-viz-type">
+                <option value="list">Species list</option>
+                <option value="histogram">Detection histogram</option>
+                <option value="calendar">Calendar heatmap</option>
+                <option value="pheno">Phenology chart</option>
+                <option value="top_species">Top species</option>
+                <option value="diversity">Diversity metrics</option>
+                <option value="hyperdominance">Vocal hyperdominance</option>
+                <option value="treemap">Taxon treemap</option>
+              </select>
+            </label>
+
+            <div id="bn-viz-param-area" hidden>
+            <div class="bn-viz-params" data-bn-viz="histogram" hidden>
+              <label>Group by
+                <select id="bn-hist-group">
+                  <option value="species">Species</option>
+                  <option value="family">Family</option>
+                  <option value="order">Order</option>
+                </select>
+              </label>
+              <label>Top N labels <input id="bn-hist-topn" type="number" min="0" max="20" value="5" /></label>
+              <label>Histogram bins <input id="bn-hist-bins" type="number" min="5" max="200" value="30" /></label>
+            </div>
+
+            <div class="bn-viz-params" data-bn-viz="calendar" hidden>
+              <label>Species (optional)
+                <select id="bn-calendar-species"><option value="">All species</option></select>
+              </label>
+            </div>
+
+            <div class="bn-viz-params" data-bn-viz="pheno" hidden>
+              <label>Plot title <input id="bn-pheno-title" type="text" placeholder="Optional title" /></label>
+              <label>Min. detection days <input id="bn-pheno-min-days" type="number" min="1" value="5" /></label>
+              <label>Sort species by
+                <select id="bn-pheno-sort">
+                  <option value="start">First detection date</option>
+                  <option value="n.days">Days detected</option>
+                  <option value="n.calls">Total calls</option>
+                  <option value="call.rate">Call rate</option>
+                  <option value="common.name">Common name</option>
+                  <option value="scientific.name">Scientific name</option>
+                </select>
+              </label>
+              <label class="bn-check"><input id="bn-pheno-desc" type="checkbox" checked /> Descending sort</label>
+            </div>
+
+            <div class="bn-viz-params" data-bn-viz="top_species" hidden>
+              <p class="bn-viz-hint">Three panels rank species independently: <strong>days detected</strong>, <strong>total calls</strong>, and <strong>call rate</strong> (calls ÷ days). The top-10 list can differ in each panel.</p>
+              <label>Site label <input id="bn-top-site" type="text" placeholder="e.g. sensor S4A17644" /></label>
+              <label>Top N species <input id="bn-top-n" type="number" min="1" max="30" value="10" /></label>
+            </div>
+
+            <div class="bn-viz-params" data-bn-viz="hyperdominance" hidden>
+              <label>Group by
+                <select id="bn-hyper-group">
+                  <option value="scientificName">Scientific name</option>
+                  <option value="commonName">Common name</option>
+                  <option value="species">Species</option>
+                  <option value="order">Order</option>
+                  <option value="family">Family</option>
+                </select>
+              </label>
+              <label class="bn-check"><input id="bn-hyper-past-half" type="checkbox" checked /> Include taxa through 50% cumulative</label>
+            </div>
+
+            <div class="bn-viz-params" data-bn-viz="treemap" hidden>
+              <label class="bn-check"><input id="bn-treemap-common" type="checkbox" /> Show common names instead of binomial</label>
+            </div>
+            </div>
+
+            <button id="bn-render" type="button" class="primary bn-render-btn">Render</button>
+          </section>
+
+          <section class="panel bn-results">
+            <div id="bn-plot-area" class="plot-area">
+              <p class="plot-empty">Load BirdNET CSV or TXT exports to begin.</p>
+            </div>
+            <div id="bn-table-area" class="bn-table-area" hidden></div>
+          </section>
+        </main>
+      </div>
+
+      <div id="tab-guide" class="tab-panel" role="tabpanel">
+        <section class="panel guide-panel">
+          <nav id="guide-nav" class="guide-nav"></nav>
+          <div id="guide-content" class="guide-content"></div>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
