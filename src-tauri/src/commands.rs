@@ -82,6 +82,21 @@ pub fn export_csv(results: Vec<IndexResult>, path: String) -> Result<(), String>
     Ok(())
 }
 
+#[tauri::command]
+pub fn export_table(
+    columns: Vec<String>,
+    rows: Vec<Vec<String>>,
+    path: String,
+    format: String,
+) -> Result<(), String> {
+    crate::table_export::export_table(&path, &format, &columns, &rows)
+}
+
+#[tauri::command]
+pub fn write_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
 fn opt_f64(v: Option<f64>) -> String {
     v.map(|x| format!("{x:.6}"))
         .unwrap_or_default()

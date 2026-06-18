@@ -30,7 +30,7 @@ const INDEX_ENTRIES: IndexEntry[] = [
     interpretation:
       "Higher ADI = activity spread across more frequency bands (richer spectral structure). Low ADI = energy concentrated in few bands (e.g., narrow machinery hum).",
     math: `The spectrum from min to max frequency is split into <em>n</em> equal bands (e.g. 0–1 kHz, 1–2 kHz, …). Proportion p<sub>i</sub> of active spectrogram cells per band. ADI = −Σ p<sub>i</sub> ln(p<sub>i</sub>) / ln(n).`,
-    literature: `<strong>Origin:</strong> Villanueva-Rivera, L. J., B. C. Pijanowski, J. Doucette, and B. Pekin. 2011. A primer of acoustic analysis for landscape ecologists. <em>Landscape Ecology</em> 26: 1233–1246 (<a href="https://doi.org/10.1007/s10980-011-9636-9" target="_blank" rel="noopener noreferrer">doi:10.1007/s10980-011-9636-9</a>).<br><strong>Goal:</strong> Capture spectral diversity of soundscapes for long-term monitoring of ecosystems and anthropogenic change.`,
+    literature: `<strong>Origin:</strong> Villanueva-Rivera, L. J., &amp; Pijanowski, B. C. (2018). <em>soundecology: Soundscape Ecology</em>. R package version 1.3.3 (<a href="https://CRAN.R-project.org/package=soundecology" target="_blank" rel="noopener noreferrer">https://CRAN.R-project.org/package=soundecology</a>).<br><strong>Goal:</strong> Capture spectral diversity of soundscapes for long-term monitoring of ecosystems and anthropogenic change.`,
   },
   {
     id: "aei",
@@ -39,7 +39,7 @@ const INDEX_ENTRIES: IndexEntry[] = [
     interpretation:
       "High AEI = similar activity levels in all bands. Low AEI = one or few bands dominate the soundscape.",
     math: `Same band proportions p<sub>i</sub> as ADI (prop.den = 2). AEI applies a Gini-based evenness transform to those proportions.`,
-    literature: `<strong>Origin:</strong> Villanueva-Rivera (2011); companion to ADI in the Purdue soundscape index suite.<br><strong>Goal:</strong> Distinguish “many bands equally active” from “many bands but one dominates.”`,
+    literature: `<strong>Origin:</strong> Villanueva-Rivera, L. J., &amp; Pijanowski, B. C. (2018). <em>soundecology: Soundscape Ecology</em>. R package version 1.3.3 (<a href="https://CRAN.R-project.org/package=soundecology" target="_blank" rel="noopener noreferrer">https://CRAN.R-project.org/package=soundecology</a>).<br><strong>Goal:</strong> Distinguish “many bands equally active” from “many bands but one dominates.”`,
   },
   {
     id: "bi",

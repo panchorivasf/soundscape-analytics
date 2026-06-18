@@ -1,5 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import type { TableExportData } from "./exportData";
+import { wirePlotExportBar, wireTableExportBar } from "./exportData";
+import { markUnsaved, clearUnsaved } from "./unsavedWork";
 import { birdnetList, callDiversity, hasTaxonomy, vocalHyperdominance } from "./birdnet/analytics";
 import { renderBirdnetPlot, speciesOptions } from "./birdnet/charts";
 import { addTaxonomy, taxonomyMatchStats } from "./birdnet/gbifTaxonomy";
@@ -10,6 +13,7 @@ let loadedData: BirdNetRow[] = [];
 let loadedPaths: string[] = [];
 let taxonomyEnriched = false;
 let lastRenderedViz: BirdnetVizType | null = null;
+let lastTableExport: TableExportData | null = null;
 
 const VIZ_LABELS: Record<BirdnetVizType, string> = {
   list: "species list",
@@ -35,9 +39,18 @@ export function initBirdnetViewer(): void {
   $("bn-viz-type")?.addEventListener("change", updateVizParamVisibility);
 
   updateVizParamVisibility();
-  // Default viz is species list — show table pane
+  wireTableExportBar(
+    "bn-table-export-bar",
+    () => lastTableExport,
+    setBnStatus,
+    () => !lastTableExport,
+    "birdnet-table"
+  );
+  wirePlotExportBar("bn-plot-export-bar", () => $("bn-plot-area"), "birdnet_plot", setBnStatus, "birdnet-plot");
+
   ($("bn-plot-area") as HTMLElement).hidden = true;
   ($("bn-table-area") as HTMLElement).hidden = false;
+  updateBnExportBars();
 }
 
 async function pickBirdnetFiles(): Promise<void> {
@@ -103,11 +116,22 @@ export function switchToBirdnetTab(): void {
   document.querySelector<HTMLButtonElement>('.main-tab[data-tab="birdnet"]')?.click();
 }
 
+function updateBnExportBars(): void {
+  const type = readVizType();
+  const isTable = TABLE_VIZ_TYPES.has(type);
+  ($("bn-table-export-bar") as HTMLElement).hidden = !isTable || !lastTableExport;
+  ($("bn-plot-export-bar") as HTMLElement).hidden = isTable;
+}
+
 function clearBirdnetData(): void {
   loadedData = [];
   loadedPaths = [];
   taxonomyEnriched = false;
   lastRenderedViz = null;
+  lastTableExport = null;
+  clearUnsaved("birdnet-table");
+  clearUnsaved("birdnet-plot");
+  updateBnExportBars();
   updateSummary();
   updateTaxonomyUi();
   const area = $("bn-plot-area");
@@ -219,6 +243,7 @@ function updateVizParamVisibility(): void {
   const isTable = TABLE_VIZ_TYPES.has(type);
   ($("bn-plot-area") as HTMLElement).hidden = isTable;
   ($("bn-table-area") as HTMLElement).hidden = !isTable;
+  updateBnExportBars();
 
   if (loadedData.length > 0 && type !== lastRenderedViz) {
     showRenderPrompt(type);
@@ -299,12 +324,16 @@ async function renderCurrent(): Promise<void> {
 
   await renderBirdnetPlot(plotArea, type, loadedData, opts);
   lastRenderedViz = type;
+  updateBnExportBars();
+  markUnsaved("birdnet-plot");
 }
 
 function renderListTable(rows: BirdnetListRow[]): void {
   const area = $("bn-table-area");
   if (rows.length === 0) {
     area.innerHTML = '<p class="plot-empty">No species in list.</p>';
+    lastTableExport = null;
+    updateBnExportBars();
     return;
   }
   const headers = [
@@ -334,6 +363,22 @@ function renderListTable(rows: BirdnetListRow[]): void {
   }
   html += "</tbody></table></div>";
   area.innerHTML = html;
+  lastTableExport = {
+    columns: headers,
+    rows: rows.map((r) => [
+      r.commonName,
+      r.scientificName,
+      String(r.nDays),
+      String(r.nCalls),
+      String(r.callRate),
+      r.peakWeek,
+      String(r.maxCallsDay),
+      r.peakDay,
+    ]),
+    defaultBaseName: "birdnet_species_list",
+  };
+  updateBnExportBars();
+  markUnsaved("birdnet-table");
 }
 
 function renderDiversityTable(m: ReturnType<typeof callDiversity>): void {
@@ -352,12 +397,29 @@ function renderDiversityTable(m: ReturnType<typeof callDiversity>): void {
       </tbody>
     </table>
   </div>`;
+  lastTableExport = {
+    columns: ["Metric", "Value"],
+    rows: [
+      ["Shannon (days)", String(m.shannonDays)],
+      ["Shannon (calls)", String(m.shannonCalls)],
+      ["Simpson (days)", String(m.simpsonDays)],
+      ["Simpson (calls)", String(m.simpsonCalls)],
+      ["Species richness", String(m.spRichness)],
+      ["Evenness (days)", String(m.evennessDays)],
+      ["Evenness (calls)", String(m.evennessCalls)],
+    ],
+    defaultBaseName: "birdnet_diversity",
+  };
+  updateBnExportBars();
+  markUnsaved("birdnet-table");
 }
 
 function renderHyperTable(rows: ReturnType<typeof vocalHyperdominance>): void {
   const area = $("bn-table-area");
   if (rows.length === 0) {
     area.innerHTML = '<p class="plot-empty">No data.</p>';
+    lastTableExport = null;
+    updateBnExportBars();
     return;
   }
   let html = `<div class="bn-table-wrap"><table class="results-table bn-table">
@@ -367,6 +429,18 @@ function renderHyperTable(rows: ReturnType<typeof vocalHyperdominance>): void {
   }
   html += "</tbody></table></div>";
   area.innerHTML = html;
+  lastTableExport = {
+    columns: ["Taxon", "Detections", "%", "Cumulative %"],
+    rows: rows.map((r) => [
+      r.taxon,
+      String(r.detections),
+      String(r.percentage),
+      String(r.cumulative),
+    ]),
+    defaultBaseName: "birdnet_hyperdominance",
+  };
+  updateBnExportBars();
+  markUnsaved("birdnet-table");
 }
 
 function esc(s: string): string {

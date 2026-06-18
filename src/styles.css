@@ -82,6 +82,189 @@ a:hover {
   flex-shrink: 0;
 }
 
+.menubar {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.menu-item {
+  position: relative;
+}
+
+.menu-trigger {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.menu-trigger:hover,
+.menu-trigger[aria-expanded="true"] {
+  background: var(--panel-elevated);
+  border-color: var(--border);
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 200;
+  min-width: 11rem;
+  padding: 0.35rem 0;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.menu-dropdown-wide {
+  min-width: 13rem;
+  padding: 0.5rem 0.65rem;
+}
+
+.menu-dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.82rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text);
+}
+
+.menu-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu-settings {
+  margin: 0.25rem 0;
+}
+
+.menu-settings select {
+  width: 100%;
+}
+
+.about-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.about-modal[hidden] {
+  display: none;
+}
+
+.about-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.about-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(640px, 100%);
+  max-height: min(85vh, 720px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+.about-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.about-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1.35rem;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.about-close:hover {
+  background: var(--panel-elevated);
+}
+
+.about-body {
+  padding: 1rem 1.1rem 1.25rem;
+}
+
+.about-lead {
+  margin: 0 0 1rem;
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+
+.about-citations h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.about-cite-block {
+  margin: 0 0 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.about-cite-block p {
+  margin: 0 0 0.35rem;
+}
+
+.about-source,
+.about-developed {
+  margin: 1rem 0 0.65rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.about-logos {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 2.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.about-logos .partner-logo {
+  max-height: calc(56px * var(--font-scale));
+  max-width: 200px;
+}
+
 .app-settings {
   display: flex;
   align-items: center;
@@ -129,6 +312,42 @@ a:hover {
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.export-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--panel-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.export-bar-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.export-fmt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+.export-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  flex: 1 1 12rem;
+  min-width: 10rem;
 }
 
 .partner-logos {

@@ -1,4 +1,5 @@
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { isAudioFile } from "./audioFormats";
 import { readViewFreqRange, syncParamForms } from "./paramsForm";
 import type { IndexParams } from "./types";
 import {
@@ -227,7 +228,7 @@ export async function refreshSpectrogramFiles(): Promise<void> {
 
   const files: string[] = [];
   for (const f of deps.getFiles()) {
-    if (f.toLowerCase().endsWith(".wav")) {
+    if (isAudioFile(f)) {
       files.push(f);
     } else {
       try {
@@ -241,7 +242,7 @@ export async function refreshSpectrogramFiles(): Promise<void> {
 
   sel.innerHTML =
     files.length === 0
-      ? '<option value="">— select WAV files on toolbar —</option>'
+      ? '<option value="">— select audio files in File menu —</option>'
       : files
           .map((f) => {
             const name = f.split(/[/\\]/).pop() ?? f;

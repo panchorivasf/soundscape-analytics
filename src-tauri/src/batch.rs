@@ -1,4 +1,4 @@
-use crate::audio::{read_wave, list_wav_files};
+use crate::audio::{list_audio_files, read_audio};
 use crate::indices::compute_all_for_wave;
 use crate::types::{ComputeRequest, IndexResult};
 use rayon::prelude::*;
@@ -17,7 +17,7 @@ pub fn process_files(request: &ComputeRequest) -> Vec<IndexResult> {
     let files = if request.files.len() == 1 {
         let p = Path::new(&request.files[0]);
         if p.is_dir() {
-            list_wav_files(p).unwrap_or_default()
+            list_audio_files(p).unwrap_or_default()
         } else {
             request.files.clone()
         }
@@ -33,7 +33,7 @@ pub fn process_files(request: &ComputeRequest) -> Vec<IndexResult> {
                 .map(|n| n.to_string_lossy().into_owned())
                 .unwrap_or_else(|| file_path.clone());
 
-            match read_wave(Path::new(file_path)) {
+            match read_audio(Path::new(file_path)) {
                 Ok(wave) => compute_all_for_wave(&wave, &file_name, &request.indices, &request.params),
                 Err(e) => request
                     .indices

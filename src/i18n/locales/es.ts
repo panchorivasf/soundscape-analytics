@@ -14,10 +14,15 @@ const es: LocaleDict = {
     fontSize: "Tamaño del texto",
     font: { normal: "Normal", large: "Grande", xlarge: "Extra grande" },
   },
+  menu: {
+    file: "Archivo",
+    options: "Opciones",
+    about: "Acerca de",
+  },
   toolbar: {
-    pickFiles: "Seleccionar archivos WAV",
+    pickFiles: "Seleccionar archivos de audio",
     pickFolder: "Seleccionar carpeta",
-    clearFiles: "Limpiar",
+    clearFiles: "Limpiar audio",
     closeApp: "Cerrar",
     noFiles: "Ningún archivo seleccionado",
     labLogo: "Logo del laboratorio",

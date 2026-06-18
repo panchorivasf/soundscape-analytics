@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    soundecology_app_lib::run()
+    soundscapeanalytics_app_lib::run()
 }

@@ -1,7 +1,18 @@
 use hound::{SampleFormat, WavReader, WavSpec};
 use std::borrow::Cow;
+use std::fs::File;
 use std::path::Path;
+use symphonia::core::audio::{AudioBufferRef, Signal};
+use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::MetadataOptions;
+use symphonia::core::probe::Hint;
 use thiserror::Error;
+
+const AUDIO_EXTENSIONS: &[&str] = &[
+    "wav", "flac", "mp3", "ogg", "oga", "m4a", "aac", "aiff", "aif", "wma",
+];
 
 #[derive(Debug, Error)]
 pub enum AudioError {
@@ -11,6 +22,8 @@ pub enum AudioError {
     UnsupportedBitDepth { bits: u16 },
     #[error("unsupported sample format")]
     UnsupportedFormat,
+    #[error("failed to decode audio: {0}")]
+    Decode(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -144,6 +157,14 @@ fn to_mono(wave: &Wave, which: Channel) -> Wave {
     }
 }
 
+pub fn read_audio(path: &Path) -> Result<Wave, AudioError> {
+    if is_wav_path(path) {
+        read_wave(path)
+    } else {
+        read_symphonia(path)
+    }
+}
+
 pub fn read_wave(path: &Path) -> Result<Wave, AudioError> {
     let reader = WavReader::open(path)?;
     let spec = reader.spec();
@@ -176,12 +197,16 @@ pub fn read_wave(path: &Path) -> Result<Wave, AudioError> {
     })
 }
 
-/// Read WAV duration from the header without decoding samples.
+/// Read audio duration from file metadata (WAV header or full decode fallback).
 pub fn wav_duration_secs(path: &Path) -> Result<f64, AudioError> {
-    let reader = WavReader::open(path)?;
-    let spec = reader.spec();
-    let frames = reader.len() as u64 / spec.channels as u64;
-    Ok(frames as f64 / spec.sample_rate as f64)
+    if is_wav_path(path) {
+        let reader = WavReader::open(path)?;
+        let spec = reader.spec();
+        let frames = reader.len() as u64 / spec.channels as u64;
+        Ok(frames as f64 / spec.sample_rate as f64)
+    } else {
+        Ok(read_audio(path)?.duration())
+    }
 }
 
 fn validate_spec(spec: &WavSpec) -> Result<(), AudioError> {
@@ -231,14 +256,14 @@ fn read_samples(
     Ok(out)
 }
 
-pub fn list_wav_files(folder: &Path) -> Result<Vec<String>, std::io::Error> {
+pub fn list_audio_files(folder: &Path) -> Result<Vec<String>, std::io::Error> {
     let mut files = Vec::new();
     for entry in std::fs::read_dir(folder)? {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
             if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                if ext.eq_ignore_ascii_case("wav") {
+                if is_audio_extension(ext) {
                     files.push(path.to_string_lossy().into_owned());
                 }
             }
@@ -246,4 +271,152 @@ pub fn list_wav_files(folder: &Path) -> Result<Vec<String>, std::io::Error> {
     }
     files.sort();
     Ok(files)
+}
+
+pub fn list_wav_files(folder: &Path) -> Result<Vec<String>, std::io::Error> {
+    list_audio_files(folder)
+}
+
+fn is_audio_extension(ext: &str) -> bool {
+    AUDIO_EXTENSIONS
+        .iter()
+        .any(|supported| ext.eq_ignore_ascii_case(supported))
+}
+
+fn is_wav_path(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("wav"))
+        .unwrap_or(false)
+}
+
+fn read_symphonia(path: &Path) -> Result<Wave, AudioError> {
+    let src = File::open(path).map_err(|e| AudioError::Decode(e.to_string()))?;
+    let mss = MediaSourceStream::new(Box::new(src), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .map_err(|e| AudioError::Decode(e.to_string()))?;
+
+    let mut format = probed.format;
+    let track = format
+        .default_track()
+        .ok_or_else(|| AudioError::Decode("no default audio track".into()))?;
+
+    let track_id = track.id;
+    let sample_rate = track
+        .codec_params
+        .sample_rate
+        .ok_or_else(|| AudioError::Decode("unknown sample rate".into()))?;
+    let channels = track.codec_params.channels.map(|c| c.count()).unwrap_or(1);
+
+    let mut decoder = symphonia::default::get_codecs()
+        .make(&track.codec_params, &DecoderOptions::default())
+        .map_err(|e| AudioError::Decode(e.to_string()))?;
+
+    let mut left = Vec::new();
+    let mut right = Vec::new();
+
+    loop {
+        let packet = match format.next_packet() {
+            Ok(packet) => packet,
+            Err(symphonia::core::errors::Error::IoError(ref e))
+                if e.kind() == std::io::ErrorKind::UnexpectedEof =>
+            {
+                break;
+            }
+            Err(e) => return Err(AudioError::Decode(e.to_string())),
+        };
+
+        if packet.track_id() != track_id {
+            continue;
+        }
+
+        match decoder.decode(&packet) {
+            Ok(decoded) => append_symphonia_samples(decoded, channels, &mut left, &mut right),
+            Err(symphonia::core::errors::Error::DecodeError(_)) => continue,
+            Err(e) => return Err(AudioError::Decode(e.to_string())),
+        }
+    }
+
+    if left.is_empty() {
+        return Err(AudioError::Decode("no audio samples decoded".into()));
+    }
+
+    Ok(Wave {
+        left,
+        right: if channels > 1 { Some(right) } else { None },
+        sample_rate,
+        bits: 32,
+        scale: SampleScale::Float,
+    })
+}
+
+fn append_symphonia_samples(
+    decoded: AudioBufferRef<'_>,
+    channels: usize,
+    left: &mut Vec<f64>,
+    right: &mut Vec<f64>,
+) {
+    match decoded {
+        AudioBufferRef::F32(buf) => {
+            for i in 0..buf.frames() {
+                left.push(buf.chan(0)[i] as f64);
+                if channels > 1 {
+                    right.push(buf.chan(1)[i] as f64);
+                }
+            }
+        }
+        AudioBufferRef::F64(buf) => {
+            for i in 0..buf.frames() {
+                left.push(buf.chan(0)[i]);
+                if channels > 1 {
+                    right.push(buf.chan(1)[i]);
+                }
+            }
+        }
+        AudioBufferRef::S16(buf) => {
+            for i in 0..buf.frames() {
+                left.push(buf.chan(0)[i] as f64);
+                if channels > 1 {
+                    right.push(buf.chan(1)[i] as f64);
+                }
+            }
+        }
+        AudioBufferRef::S32(buf) => {
+            for i in 0..buf.frames() {
+                left.push(buf.chan(0)[i] as f64);
+                if channels > 1 {
+                    right.push(buf.chan(1)[i] as f64);
+                }
+            }
+        }
+        AudioBufferRef::S8(buf) => {
+            for i in 0..buf.frames() {
+                left.push(buf.chan(0)[i] as f64);
+                if channels > 1 {
+                    right.push(buf.chan(1)[i] as f64);
+                }
+            }
+        }
+        AudioBufferRef::U8(buf) => {
+            for i in 0..buf.frames() {
+                left.push((buf.chan(0)[i] as i32 - 128) as f64);
+                if channels > 1 {
+                    right.push((buf.chan(1)[i] as i32 - 128) as f64);
+                }
+            }
+        }
+        _ => {}
+    }
 }

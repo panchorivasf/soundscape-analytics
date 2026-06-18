@@ -21,14 +21,57 @@ const en: LocaleDict = {
       xlarge: "Extra large",
     },
   },
+  menu: {
+    file: "File",
+    options: "Options",
+    about: "About",
+  },
   toolbar: {
-    pickFiles: "Select WAV files",
-    pickFolder: "Select folder",
-    clearFiles: "Clear",
-    closeApp: "Close",
+    pickFiles: "Select Audio Files",
+    pickFolder: "Select Folder",
+    clearFiles: "Clear Audio",
     noFiles: "No files selected",
     labLogo: "Lab logo",
     museoLogo: "Museo Bioacústico",
+  },
+  export: {
+    tableLabel: "Download table",
+    plotLabel: "Download plot",
+    download: "Download",
+    plotHtmlHint: "HTML preserves Plotly interactivity (zoom, hover, legend).",
+    exported: "Exported to {path}",
+    exportedCount: "Exported {count} files",
+  },
+  exit: {
+    title: "Save before exiting?",
+    unsavedIntro: "You have results that have not been downloaded:",
+    unsavedQuestion: "Use the Download buttons in the relevant tabs, or exit without saving.",
+    stayAndDownload: "Stay and download",
+    exitWithoutSaving: "Exit without saving",
+    cancel: "Cancel",
+    unsavedAnalyzeResults: "Index calculation results (table)",
+    unsavedIndexPlot: "Index Visualizer plot",
+    unsavedBirdnetTable: "BirdNet Visualizer table",
+    unsavedBirdnetPlot: "BirdNet Visualizer plot",
+  },
+  about: {
+    description:
+      "Soundscape Analytics is a desktop app integrating several software for comprehensive soundscape analyses. It includes acoustic indices from SoundEcology2, automatic bird detections from BirdNET, visualization from BirdnetVisualizeR, and false-color spectrograms from Ecoacoustics Analysis Programs.",
+    citationsTitle: "Citations",
+    sourceCode:
+      'The source code can be found on GitHub: <a href="https://github.com/panchorivasf/soundscape-analytics" target="_blank" rel="noopener noreferrer">https://github.com/panchorivasf/soundscape-analytics</a>',
+    developedBy: "Developed by Francisco Rivas at:",
+    close: "Close",
+    cite: {
+      soundecology:
+        "<p><strong>SoundEcology2</strong> — acoustic indices:</p><p>Rivas, F., Villanueva-Rivera, L., &amp; Pijanowski, B. (2025). <em>SoundEcology2: Soundscape Ecology</em>. R package. <a href=\"https://github.com/panchorivasf/SoundEcology2\" target=\"_blank\" rel=\"noopener noreferrer\">https://github.com/panchorivasf/SoundEcology2</a></p>",
+      birdnet:
+        "<p><strong>BirdNET</strong> — automatic bird detections:</p><p>Kahl, S., Wood, C. M., Eibl, M., &amp; Klinck, H. (2021). BirdNET: A deep learning solution for avian diversity monitoring. <em>Ecological Informatics</em>, 61, 101236. <a href=\"https://doi.org/10.1016/j.ecoinf.2021.101236\" target=\"_blank\" rel=\"noopener noreferrer\">doi:10.1016/j.ecoinf.2021.101236</a></p>",
+      birdnetVisualizer:
+        "<p><strong>BirdnetVisualizeR</strong> — BirdNET visualization:</p><p>Rivas, F. <em>BirdnetVisualizeR: Visualization tools for BirdNET outputs</em>. R package. <a href=\"https://github.com/panchorivasf/BirdnetVisualizeR\" target=\"_blank\" rel=\"noopener noreferrer\">https://github.com/panchorivasf/BirdnetVisualizeR</a></p>",
+      fcs:
+        "<p><strong>False-color spectrograms</strong> — Ecoacoustics Analysis Programs &amp; falsecoloR:</p><p>Towsey, M., Truskinger, A., Cottman-Fields, M., &amp; Roe, P. (2018). Ecoacoustics Audio Analysis Software v18.03.0.41. Zenodo. <a href=\"https://doi.org/10.5281/zenodo.1188744\" target=\"_blank\" rel=\"noopener noreferrer\">doi:10.5281/zenodo.1188744</a></p><p>Brodie, S. (2021). sherynbrodie/fcs-audio-analysis-utility (Version 21.08.0). Zenodo. <a href=\"https://doi.org/10.5281/zenodo.5220459\" target=\"_blank\" rel=\"noopener noreferrer\">doi:10.5281/zenodo.5220459</a></p><p>Rivas, F. <em>falsecoloR: False-color spectrogram workflow for Ecoacoustics Analysis Programs</em>. R package. <a href=\"https://github.com/panchorivasf/falsecoloR\" target=\"_blank\" rel=\"noopener noreferrer\">https://github.com/panchorivasf/falsecoloR</a></p>",
+    },
   },
   tab: {
     analyze: "Index Calculation",
@@ -74,12 +117,12 @@ const en: LocaleDict = {
     channelEach: "Each channel (2 spectrograms)",
     channelLeft: "Left channel only",
     channelRight: "Right channel only",
-    selectFiles: "Select at least one WAV file or folder",
+    selectFiles: "Select at least one audio file or folder",
     selectIndex: "Select at least one index",
     computing: "Computing…",
     done: "Done — {count} results in {time}s",
     exported: "Exported to {path}",
-    folderSelected: "Folder selected — all WAV files will be processed in parallel",
+    folderSelected: "Folder selected — all supported audio files will be processed in parallel",
     loadIndicesErr: "Could not load indices ({error}). Restart the desktop app.",
     startupErr: "Startup failed: {error}",
     loadParamsErr: "Failed to load default parameters: {error}",

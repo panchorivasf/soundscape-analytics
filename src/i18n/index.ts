@@ -69,10 +69,13 @@ const ID_TEXT_KEYS: Record<string, string> = {
   "pick-files": "toolbar.pickFiles",
   "pick-folder": "toolbar.pickFolder",
   "clear-files": "toolbar.clearFiles",
-  "close-app": "toolbar.closeApp",
+  "menu-file": "menu.file",
+  "menu-options": "menu.options",
+  "menu-about": "menu.about",
   compute: "analyze.compute",
-  "export-csv": "analyze.exportCsv",
   "div-bands-equalize": "analyze.resetBands",
+  "analyze-export-table": "export.download",
+  "bn-export-table": "export.download",
 };
 
 const SELECTOR_TEXT: [string, string][] = [];
@@ -165,6 +168,11 @@ export function applyTranslations(): void {
     if (key && "placeholder" in el) (el as HTMLInputElement).placeholder = t(key);
   });
 
+  document.querySelectorAll<HTMLElement>("[data-i18n-html]").forEach((el) => {
+    const key = el.dataset.i18nHtml;
+    if (key) el.innerHTML = t(key);
+  });
+
   for (const [id, key] of Object.entries(ID_TEXT_KEYS)) {
     const el = document.getElementById(id);
     if (el) el.textContent = t(key);
@@ -188,6 +196,12 @@ export function applyTranslations(): void {
 
   const museoLogo = document.getElementById("museo-logo") as HTMLImageElement | null;
   if (museoLogo) museoLogo.alt = t("toolbar.museoLogo");
+
+  const labLogo = document.getElementById("lab-logo") as HTMLImageElement | null;
+  if (labLogo) labLogo.alt = t("toolbar.labLogo");
+
+  const aboutClose = document.getElementById("about-close");
+  if (aboutClose) aboutClose.setAttribute("aria-label", t("about.close"));
 
   document.title = t("app.title");
 

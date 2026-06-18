@@ -10,6 +10,7 @@ mod fcs_naming;
 mod fcs_pipeline;
 mod fcs_postprocess;
 mod indices;
+mod table_export;
 mod types;
 mod viz;
 
@@ -92,6 +93,8 @@ pub fn run() {
             commands::available_indices,
             commands::default_params,
             commands::export_csv,
+            commands::export_table,
+            commands::write_text_file,
             commands::spectrogram_viz,
         ])
         .run(tauri::generate_context!())

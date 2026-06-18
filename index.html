@@ -11,6 +11,45 @@
     <div id="app">
       <header class="titlebar">
         <div class="titlebar-left">
+          <nav class="menubar" aria-label="Application menu">
+            <div class="menu-item">
+              <button type="button" class="menu-trigger" id="menu-file" aria-haspopup="true" aria-expanded="false">File</button>
+              <div class="menu-dropdown" id="menu-file-dropdown" hidden>
+                <button id="pick-files" type="button" class="menu-dropdown-item">Select Audio Files</button>
+                <button id="pick-folder" type="button" class="menu-dropdown-item">Select Folder</button>
+                <button id="clear-files" type="button" class="menu-dropdown-item">Clear Audio</button>
+              </div>
+            </div>
+            <div class="menu-item">
+              <button type="button" class="menu-trigger" id="menu-options" aria-haspopup="true" aria-expanded="false">Options</button>
+              <div class="menu-dropdown menu-dropdown-wide" id="menu-options-dropdown" hidden>
+                <label class="settings-control menu-settings">
+                  <span data-i18n="settings.language">Language</span>
+                  <select id="app-language" aria-label="Language">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="de">German</option>
+                  </select>
+                </label>
+                <label class="settings-control menu-settings">
+                  <span data-i18n="settings.fontSize">Text size</span>
+                  <select id="app-font-size" aria-label="Text size">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra large</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="menu-item">
+              <button type="button" class="menu-trigger" id="menu-about">About</button>
+            </div>
+          </nav>
+          <span id="file-summary" class="file-summary">No files selected</span>
+        </div>
+        <div class="titlebar-right">
           <img
             id="app-icon"
             src="/app-logo.svg"
@@ -18,55 +57,6 @@
             class="app-icon"
             onerror="this.onerror=null;this.src='/app-logo.png';"
           />
-          <div class="toolbar-input">
-            <button id="pick-files" type="button">Select WAV files</button>
-            <button id="pick-folder" type="button" class="secondary">Select folder</button>
-            <button id="clear-files" type="button" class="ghost">Clear</button>
-            <span id="file-summary" class="file-summary">No files selected</span>
-          </div>
-        </div>
-        <div class="titlebar-right">
-          <div class="app-settings" aria-label="App settings">
-            <label class="settings-control">
-              <span data-i18n="settings.language">Language</span>
-              <select id="app-language" aria-label="Language">
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <option value="pt">Portuguese</option>
-                <option value="de">German</option>
-              </select>
-            </label>
-            <label class="settings-control">
-              <span data-i18n="settings.fontSize">Text size</span>
-              <select id="app-font-size" aria-label="Text size">
-                <option value="normal">Normal</option>
-                <option value="large">Large</option>
-                <option value="xlarge">Extra large</option>
-              </select>
-            </label>
-          </div>
-          <div class="partner-logos">
-            <img
-              id="museo-logo"
-              src="/museo-logo.png"
-              alt="Museo Bioacústico"
-              class="partner-logo museo-logo"
-              data-i18n-title="toolbar.museoLogo"
-              title="Museo Bioacústico"
-              onerror="this.style.display='none'"
-            />
-            <img
-              id="lab-logo"
-              src="/lab-logo.png"
-              alt="Lab logo"
-              class="partner-logo lab-logo"
-              data-i18n-title="toolbar.labLogo"
-              title="Lab logo"
-              onerror="this.style.display='none'"
-            />
-          </div>
-          <button id="close-app" type="button" class="close-btn">Close</button>
         </div>
       </header>
 
@@ -188,13 +178,19 @@
 
             <div class="btn-row actions">
               <button id="compute" type="button" class="primary">Compute indices</button>
-              <button id="export-csv" type="button" class="secondary" disabled>Export CSV</button>
             </div>
             <p id="status" class="status"></p>
           </section>
 
           <section class="panel results">
             <h2 data-i18n="analyze.results">Results</h2>
+            <div class="export-bar" id="analyze-export-bar">
+              <span class="export-bar-label" data-i18n="export.tableLabel">Download table</span>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-csv" checked /> CSV</label>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-xlsx" /> XLSX</label>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-parquet" /> Parquet</label>
+              <button type="button" class="secondary export-table-btn" id="analyze-export-table" data-i18n="export.download" disabled>Download</button>
+            </div>
             <div class="table-wrap">
               <table id="results-table">
                 <thead>
@@ -270,6 +266,13 @@
             </div>
             <button id="plot-btn" type="button" class="primary">Update plot</button>
           </div>
+          <div class="export-bar" id="plot-export-bar">
+            <span class="export-bar-label" data-i18n="export.plotLabel">Download plot</span>
+            <button type="button" class="secondary export-plot-png" id="plot-export-png">PNG</button>
+            <button type="button" class="secondary export-plot-html" id="plot-export-html">HTML</button>
+            <span class="export-hint" data-i18n="export.plotHtmlHint">HTML preserves Plotly interactivity (zoom, hover, legend).</span>
+          </div>
+          <p id="plot-export-status" class="status export-status"></p>
           <div id="plot-area" class="plot-area">
             <p class="plot-empty">Run index calculation first, then choose chart options here.</p>
           </div>
@@ -803,6 +806,19 @@
           </section>
 
           <section class="panel bn-results">
+            <div class="export-bar" id="bn-table-export-bar" hidden>
+              <span class="export-bar-label" data-i18n="export.tableLabel">Download table</span>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-csv" checked /> CSV</label>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-xlsx" /> XLSX</label>
+              <label class="export-fmt"><input type="checkbox" class="export-fmt-parquet" /> Parquet</label>
+              <button type="button" class="secondary export-table-btn" id="bn-export-table" data-i18n="export.download">Download</button>
+            </div>
+            <div class="export-bar" id="bn-plot-export-bar" hidden>
+              <span class="export-bar-label" data-i18n="export.plotLabel">Download plot</span>
+              <button type="button" class="secondary export-plot-png" id="bn-export-png">PNG</button>
+              <button type="button" class="secondary export-plot-html" id="bn-export-html">HTML</button>
+              <span class="export-hint" data-i18n="export.plotHtmlHint">HTML preserves Plotly interactivity (zoom, hover, legend).</span>
+            </div>
             <div id="bn-plot-area" class="plot-area">
               <p class="plot-empty">Load BirdNET CSV or TXT exports to begin.</p>
             </div>
@@ -818,6 +834,51 @@
         </section>
       </div>
     </div>
+
+    <div id="about-modal" class="about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="about-title">
+      <div class="about-backdrop" id="about-backdrop"></div>
+      <div class="about-dialog">
+        <header class="about-header">
+          <h2 id="about-title" data-i18n="menu.about">About</h2>
+          <button id="about-close" type="button" class="about-close" aria-label="Close">&times;</button>
+        </header>
+        <div class="about-body">
+          <p class="about-lead" data-i18n="about.description">
+            Soundscape Analytics is a desktop app integrating several software for comprehensive soundscape analyses.
+          </p>
+          <section class="about-citations">
+            <h3 data-i18n="about.citationsTitle">Citations</h3>
+            <div class="about-cite-block" data-i18n-html="about.cite.soundecology"></div>
+            <div class="about-cite-block" data-i18n-html="about.cite.birdnet"></div>
+            <div class="about-cite-block" data-i18n-html="about.cite.birdnetVisualizer"></div>
+            <div class="about-cite-block" data-i18n-html="about.cite.fcs"></div>
+          </section>
+          <p class="about-source" data-i18n-html="about.sourceCode"></p>
+          <p class="about-developed" data-i18n="about.developedBy">Developed by Francisco Rivas at:</p>
+          <div class="about-logos partner-logos">
+            <img
+              id="museo-logo"
+              src="/museo-logo.png"
+              alt="Museo Bioacústico"
+              class="partner-logo museo-logo"
+              data-i18n-title="toolbar.museoLogo"
+              title="Museo Bioacústico"
+              onerror="this.style.display='none'"
+            />
+            <img
+              id="lab-logo"
+              src="/lab-logo.png"
+              alt="Lab logo"
+              class="partner-logo lab-logo"
+              data-i18n-title="toolbar.labLogo"
+              title="Lab logo"
+              onerror="this.style.display='none'"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

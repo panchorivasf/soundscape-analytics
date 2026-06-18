@@ -1,4 +1,6 @@
 import Plotly from "plotly.js-dist-min";
+import { wirePlotExportBar } from "./exportData";
+import { markUnsaved } from "./unsavedWork";
 import { enrichResults } from "./metadata";
 import type { EnrichedResult, IndexResult } from "./types";
 
@@ -21,6 +23,19 @@ let getResults: () => IndexResult[] = () => [];
 export function initPlots(resultsGetter: () => IndexResult[]): void {
   getResults = resultsGetter;
   document.getElementById("plot-btn")?.addEventListener("click", renderPlot);
+  wirePlotExportBar(
+    "plot-export-bar",
+    () => document.getElementById("plot-area"),
+    "index_plot",
+    (msg, kind) => {
+      const el = document.getElementById("plot-export-status");
+      if (el) {
+        el.textContent = msg;
+        el.className = `status export-status ${kind}`;
+      }
+    },
+    "index-plot"
+  );
 }
 
 export function refreshPlotOptions(): void {
@@ -187,6 +202,7 @@ function renderPlot(): void {
     displayModeBar: true,
     modeBarButtonsToRemove: ["lasso2d", "select2d"],
   });
+  markUnsaved("index-plot");
 }
 
 function groupLabel(g: GroupField): string {

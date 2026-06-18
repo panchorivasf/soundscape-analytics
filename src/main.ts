@@ -1,8 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open, save } from "@tauri-apps/plugin-dialog";
-import { initBirdnetViewer } from "./birdnetViewer";
+import { open } from "@tauri-apps/plugin-dialog";
+import {
+  AUDIO_DIALOG_FILTER,
+  isFolderSelection,
+} from "./audioFormats";
+import type { TableExportData } from "./exportData";
+import { wireTableExportBar } from "./exportData";
+import { markUnsaved } from "./unsavedWork";
+import { initExitGuard } from "./exitGuard";
 import { initBirdnetAnalyzer } from "./birdnetAnalyzer";
+import { initBirdnetViewer } from "./birdnetViewer";
 import { initFalseColorSpectrograms } from "./falseColorSpectrograms";
 import { initIndexGuide, initTabs } from "./indexGuide";
 import { initI18n, t } from "./i18n";
@@ -20,8 +27,41 @@ import type { IndexParams, IndexResult } from "./types";
 
 let selectedFiles: string[] = [];
 let lastResults: IndexResult[] = [];
+let syncAnalyzeExportDisabled: () => void = () => {};
 
 const $ = (id: string) => document.getElementById(id)!;
+
+function indexResultsToTable(results: IndexResult[]): TableExportData {
+  const num = (v: number | null | undefined) =>
+    v == null || Number.isNaN(v) ? "" : v.toFixed(6);
+  return {
+    columns: [
+      "file_name",
+      "index",
+      "value",
+      "value_l",
+      "value_r",
+      "value_avg",
+      "channels",
+      "duration",
+      "sample_rate",
+      "error",
+    ],
+    rows: results.map((r) => [
+      r.fileName,
+      r.index,
+      num(r.value ?? r.valueAvg),
+      num(r.valueL),
+      num(r.valueR),
+      num(r.valueAvg),
+      r.channels,
+      r.duration.toFixed(6),
+      String(r.sampleRate),
+      r.error ?? "",
+    ]),
+    defaultBaseName: "soundscape_analytics_results",
+  };
+}
 
 function setStatus(msg: string, kind: "ok" | "error" | "" = "") {
   const el = $("status");
@@ -51,7 +91,7 @@ function updateFileSummary() {
     void refreshSpectrogramFiles();
     return;
   }
-  if (selectedFiles.length === 1 && !selectedFiles[0].toLowerCase().endsWith(".wav")) {
+  if (isFolderSelection(selectedFiles)) {
     const name = selectedFiles[0].split(/[/\\]/).pop() ?? selectedFiles[0];
     el.textContent = `Folder: ${name}`;
     void refreshSpectrogramFiles();
@@ -97,15 +137,73 @@ function renderResults(results: IndexResult[]) {
   }
 }
 
-function wireUiHandlers(): void {
-  $("close-app").addEventListener("click", () => {
-    void getCurrentWindow().close();
+function closeAllMenus(): void {
+  document.querySelectorAll<HTMLElement>(".menu-dropdown").forEach((menu) => {
+    menu.hidden = true;
+  });
+  document.querySelectorAll<HTMLButtonElement>(".menu-trigger[aria-expanded]").forEach((btn) => {
+    btn.setAttribute("aria-expanded", "false");
+  });
+}
+
+function toggleMenu(triggerId: string, dropdownId: string): void {
+  const trigger = $(triggerId);
+  const dropdown = $(dropdownId);
+  const isOpen = !dropdown.hidden;
+  closeAllMenus();
+  if (!isOpen) {
+    dropdown.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+  }
+}
+
+function openAboutModal(): void {
+  closeAllMenus();
+  const modal = $("about-modal");
+  modal.hidden = false;
+}
+
+function closeAboutModal(): void {
+  $("about-modal").hidden = true;
+}
+
+function wireMenubar(): void {
+  $("menu-file").addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleMenu("menu-file", "menu-file-dropdown");
   });
 
+  $("menu-options").addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleMenu("menu-options", "menu-options-dropdown");
+  });
+
+  $("menu-about").addEventListener("click", () => {
+    openAboutModal();
+  });
+
+  $("about-close").addEventListener("click", () => closeAboutModal());
+  $("about-backdrop").addEventListener("click", () => closeAboutModal());
+
+  document.addEventListener("click", () => closeAllMenus());
+  document.querySelectorAll(".menu-dropdown").forEach((menu) => {
+    menu.addEventListener("click", (e) => e.stopPropagation());
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeAllMenus();
+      closeAboutModal();
+    }
+  });
+}
+
+function wireUiHandlers(): void {
   $("pick-files").addEventListener("click", async () => {
+    closeAllMenus();
     const picked = await open({
       multiple: true,
-      filters: [{ name: "WAV", extensions: ["wav"] }],
+      filters: [AUDIO_DIALOG_FILTER],
     });
     if (picked) {
       selectedFiles = Array.isArray(picked) ? picked : [picked];
@@ -114,6 +212,7 @@ function wireUiHandlers(): void {
   });
 
   $("pick-folder").addEventListener("click", async () => {
+    closeAllMenus();
     const folder = await open({ directory: true, multiple: false });
     if (folder && typeof folder === "string") {
       selectedFiles = [folder];
@@ -123,6 +222,7 @@ function wireUiHandlers(): void {
   });
 
   $("clear-files").addEventListener("click", () => {
+    closeAllMenus();
     selectedFiles = [];
     updateFileSummary();
     setStatus("");
@@ -158,9 +258,10 @@ function wireUiHandlers(): void {
       lastResults = results;
       renderResults(results);
       onResultsUpdated();
+      markUnsaved("analyze-results");
       const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
       setStatus(t("analyze.done", { count: results.length, time: elapsed }), "ok");
-      ($("export-csv") as HTMLButtonElement).disabled = results.length === 0;
+      syncAnalyzeExportDisabled();
     } catch (e) {
       setStatus(String(e), "error");
     } finally {
@@ -168,16 +269,13 @@ function wireUiHandlers(): void {
     }
   });
 
-  $("export-csv").addEventListener("click", async () => {
-    const path = await save({
-      filters: [{ name: "CSV", extensions: ["csv"] }],
-      defaultPath: "soundscape_analytics_results.csv",
-    });
-    if (path) {
-      await invoke("export_csv", { results: lastResults, path });
-      setStatus(t("analyze.exported", { path }), "ok");
-    }
-  });
+  syncAnalyzeExportDisabled = wireTableExportBar(
+    "analyze-export-bar",
+    () => (lastResults.length > 0 ? indexResultsToTable(lastResults) : null),
+    setStatus,
+    () => lastResults.length === 0,
+    "analyze-results"
+  );
 
   document.getElementById("plot-type")?.addEventListener("change", () => {
     const type = (document.getElementById("plot-type") as HTMLSelectElement).value;
@@ -225,13 +323,15 @@ async function init() {
   initI18n();
   initTabs();
   initIndexGuide();
+  wireMenubar();
   wireUiHandlers();
+  await initExitGuard();
 
   initDivBandEditors("");
   initPlots(() => lastResults);
   initBirdnetViewer();
   initBirdnetAnalyzer(() => {
-    if (selectedFiles.length === 1 && !selectedFiles[0].toLowerCase().endsWith(".wav")) {
+    if (isFolderSelection(selectedFiles)) {
       return selectedFiles[0];
     }
     return null;

@@ -1,4 +1,4 @@
-use crate::audio::{read_wave, resolve_channel_mode, Channel};
+use crate::audio::{read_audio, resolve_channel_mode, Channel};
 use crate::dsp::binary::freq_bins_hz;
 use crate::dsp::prepare_channel;
 use crate::dsp::spectrogram::{
@@ -20,7 +20,7 @@ pub fn compute_spectrogram_viz(req: &SpectrogramVizRequest) -> Result<Spectrogra
         return Err(format!("file not found: {}", req.file_path));
     }
 
-    let wave_raw = read_wave(path).map_err(|e| e.to_string())?;
+    let wave_raw = read_audio(path).map_err(|e| e.to_string())?;
     let (wave_cow, _channels_label) = resolve_channel_mode(&wave_raw, &req.params.channel_mode);
     let wave = wave_cow.as_ref();
 
